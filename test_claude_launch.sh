@@ -11,8 +11,6 @@ WORK_DIR="${1:-$HOME/project/テスト5-フルフロー}"
 GID="test-$(date +%s)"
 SESSION_NAME="task-${GID}"
 CLAUDE_CMD="${CLAUDE_CMD:-claude}"
-CLAUDE_MAX_TURNS="${CLAUDE_MAX_TURNS:-20}"
-CLAUDE_MAX_BUDGET_USD="${CLAUDE_MAX_BUDGET_USD:-5}"
 
 echo "=== Claude Launch Test ==="
 echo "Work dir: $WORK_DIR"

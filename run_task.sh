@@ -4,7 +4,7 @@
 # Usage: run_task.sh <task_gid>
 #
 # Requires environment variables (loaded from .env by poll_asana.py or manually):
-#   ASANA_PAT, REPO_PATH, CLAUDE_CMD, CLAUDE_MAX_TURNS, CLAUDE_MAX_BUDGET_USD
+#   ASANA_PAT, REPO_PATH, CLAUDE_CMD
 #
 # Optional:
 #   TASK_LOG – path to log file (defaults to ./logs/tasks/<gid>.log)
@@ -30,8 +30,6 @@ GID="${1:?Usage: run_task.sh <task_gid>}"
 REPO_PATH="${REPO_PATH:-$HOME/project}"
 REPO_PATH="${REPO_PATH/#\~/$HOME}"
 CLAUDE_CMD="${CLAUDE_CMD:-claude}"
-CLAUDE_MAX_TURNS="${CLAUDE_MAX_TURNS:-20}"
-CLAUDE_MAX_BUDGET_USD="${CLAUDE_MAX_BUDGET_USD:-5}"
 LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
 TASK_LOG="${TASK_LOG:-$LOG_DIR/tasks/${GID}.log}"
 
@@ -61,24 +59,24 @@ TASK_JSON=$(curl -sf \
     exit 1
 }
 
-TASK_NAME=$(echo "$TASK_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['name'])" 2>/dev/null || echo "")
-TASK_NOTES=$(echo "$TASK_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['data'].get('notes',''))" 2>/dev/null || echo "")
-TASK_URL=$(echo "$TASK_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['data'].get('permalink_url',''))" 2>/dev/null || echo "")
+# Parse fields via dedicated helper script
+read_field() {
+    echo "$TASK_JSON" | python3 "$SCRIPT_DIR/lib/parse_task_json.py" "$1" 2>/dev/null || echo ""
+}
+
+TASK_NAME=$(read_field name)
+TASK_NOTES=$(read_field notes)
+TASK_URL=$(read_field permalink_url)
 
 log "Task name: $TASK_NAME"
 log "Task URL:  $TASK_URL"
 
 # ---------------------------------------------------------------------------
-# 2. Create workspace directory
+# 2. Create workspace directory (uses shared Python logic for consistency)
 # ---------------------------------------------------------------------------
 
-to_safe_dirname() {
-    # ファイルシステムNGな文字だけ置換。日本語はそのまま残す
-    echo "$1" | sed 's/[/:*?"<>|\\]/-/g' | sed 's/  */-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//'
-}
-
 if [[ -n "$TASK_NAME" ]]; then
-    DIR_NAME=$(to_safe_dirname "$TASK_NAME")
+    DIR_NAME=$(PYTHONPATH="$SCRIPT_DIR" python3 -c "from lib.dirnames import to_safe_dirname; print(to_safe_dirname('''$TASK_NAME'''))" 2>/dev/null || echo "$GID")
 else
     DIR_NAME="$GID"
 fi
@@ -95,7 +93,6 @@ mkdir -p "$WORK_DIR"
 # ---------------------------------------------------------------------------
 
 log "Cloning repositories..."
-set +e
 (
     cd "$WORK_DIR"
     git clone https://github.com/everytv/delish-server 2>&1 &
@@ -113,12 +110,10 @@ set +e
     if [[ "$CLONE_FAILED" -eq 1 ]]; then
         log "WARNING: One or more clone operations failed"
     fi
-)
-set -e
+) || true
 log "Clone complete."
 
 log "Installing npm dependencies..."
-set +e
 (
     cd "$WORK_DIR"
     (cd delish-web2 && npm install 2>&1) &
@@ -133,8 +128,7 @@ set +e
     if [[ "$NPM_FAILED" -eq 1 ]]; then
         log "WARNING: One or more npm install operations failed"
     fi
-)
-set -e
+) || true
 log "npm install complete."
 
 # Extract debug.zip if present

@@ -14,8 +14,6 @@ Asanaで自分に割り当てられた新規タスクを自動検知し、Claude
 ## セットアップ
 
 ```bash
-cd /tmp/mai-impl-b
-
 # 依存パッケージのインストール
 pip install -r requirements.txt
 
@@ -33,17 +31,35 @@ cp .env.example .env
 | `ASANA_POLL_INTERVAL_SEC` | ポーリング間隔（秒） | `60` |
 | `REPO_PATH` | ワークスペース作成先 | `~/project` |
 | `CLAUDE_CMD` | Claude CLIコマンド | `claude` |
-| `CLAUDE_MAX_TURNS` | Claude最大ターン数 | `20` |
-| `CLAUDE_MAX_BUDGET_USD` | Claude最大コスト（USD） | `5` |
 | `LOG_DIR` | ログ出力先 | `./logs` |
 | `TMP_DIR` | 一時ファイル置き場 | `./tmp` |
+
+## プロジェクト構成
+
+```
+poll_asana.py          # エントリポイント（ポーリングループ）
+run_task.sh            # タスクごとのセットアップスクリプト
+list_sessions.sh       # 実行中セッション一覧表示
+test_claude_launch.sh  # Claude起動テスト用
+requirements.txt
+.env.example
+lib/
+  config.py            # 環境変数・定数の定義
+  logging_setup.py     # ロガーの初期化
+  state.py             # state.json の読み書き
+  asana_api.py         # Asana APIクライアント
+  launcher.py          # tmuxセッション起動・Claude送信
+  dirnames.py          # ディレクトリ名サニタイズ（Python/Shell共用）
+  parse_task_json.py   # run_task.sh 用JSONパーサ
+  list_sessions.py     # list_sessions.sh 用表示ロジック
+```
 
 ## 起動方法
 
 tmuxセッション `asana-poller` 内で起動する:
 
 ```bash
-tmux new-session -d -s asana-poller "python3 /tmp/mai-impl-b/poll_asana.py"
+tmux new-session -d -s asana-poller "python3 poll_asana.py"
 tmux attach -t asana-poller
 ```
 
@@ -55,7 +71,7 @@ tmux attach -t asana-poller
 4. 新規タスクごとに `tmux new-session -d -s task-{gid}` でセッション作成
 5. `run_task.sh` がセッション内で以下を実行:
    - Asana APIからタスク詳細取得
-   - `~/project/{task-name-kebab}/` ディレクトリ作成
+   - `~/project/{task-name}/` ディレクトリ作成
    - 3つのリポジトリをclone & npm install
    - Claude Codeを起動し `/mai` でタスク情報を送信
 
@@ -63,7 +79,7 @@ tmux attach -t asana-poller
 
 ```bash
 # 実行中のセッション一覧
-tmux ls
+./list_sessions.sh
 
 # 特定タスクに接続
 tmux attach -t task-{gid}
@@ -81,7 +97,7 @@ tmux attach -t task-{gid}
 ```json
 {
   "known_task_gids": [],
-  "running_task_gids": [],
+  "running_tasks": {},
   "completed_task_gids": []
 }
 ```
