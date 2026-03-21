@@ -8,7 +8,15 @@ import threading
 import time
 from pathlib import Path
 
-from lib.config import LOG_DIR, RUN_TASK_SH, SCRIPT_DIR
+from lib.config import (
+    CLAUDE_CMD,
+    CLAUDE_STARTUP_CMD,
+    CLAUDE_STARTUP_WAIT,
+    LOG_DIR,
+    REPO_PATH,
+    RUN_TASK_SH,
+    SCRIPT_DIR,
+)
 from lib.dirnames import to_safe_dirname
 from lib.state import load_state, save_state
 
@@ -43,7 +51,6 @@ def _send_claude_commands(
     gid: str, session_name: str, task_name: str, task_url: str
 ) -> None:
     """Wait for run_task.sh setup to finish, then send claude + /mai via tmux send-keys."""
-    claude_cmd = os.environ.get("CLAUDE_CMD", "claude")
     marker = SCRIPT_DIR / "tmp" / f"setup_done_{gid}"
 
     for _ in range(360):  # max 6 min wait
@@ -57,14 +64,14 @@ def _send_claude_commands(
     time.sleep(2)
 
     try:
-        claude_launch = f"{claude_cmd} -n '{task_name}'"
+        claude_launch = f"{CLAUDE_CMD} -n '{task_name}'"
         subprocess.run(
             ["tmux", "send-keys", "-t", session_name, "-l", claude_launch], check=True
         )
         subprocess.run(
             ["tmux", "send-keys", "-t", session_name, "Enter"], check=True
         )
-        time.sleep(8)
+        time.sleep(CLAUDE_STARTUP_WAIT)
 
         subprocess.run(
             ["tmux", "send-keys", "-t", session_name, "", "Enter"], check=True
@@ -80,7 +87,7 @@ def _send_claude_commands(
         )
         time.sleep(1)
 
-        mai_cmd = f"/mai {task_url}"
+        mai_cmd = f"{CLAUDE_STARTUP_CMD} {task_url}"
         subprocess.run(
             ["tmux", "send-keys", "-t", session_name, "-l", mai_cmd], check=True
         )
@@ -88,7 +95,7 @@ def _send_claude_commands(
             ["tmux", "send-keys", "-t", session_name, "Enter"], check=True
         )
 
-        logger.info("Claude + /mai sent to task %s (%s)", gid, task_url)
+        logger.info("Claude + %s sent to task %s (%s)", CLAUDE_STARTUP_CMD, gid, task_url)
 
         time.sleep(10)
         claude_session_id = _get_claude_session_id(gid)
@@ -139,7 +146,7 @@ def launch_task(gid: str, task_name: str, state: dict) -> None:
         subprocess.run(cmd, check=True, env=env, timeout=10)
         logger.info("tmux session started: tmux attach -t %s", session_name)
 
-        repo_path = os.path.expanduser(os.environ.get("REPO_PATH", "~/project"))
+        repo_path = REPO_PATH
         dir_name = to_safe_dirname(task_name) if task_name else gid
         work_dir = os.path.join(repo_path, dir_name or gid)
         task_url = f"https://app.asana.com/0/0/{gid}/f"

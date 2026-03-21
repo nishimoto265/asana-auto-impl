@@ -30,8 +30,13 @@ GID="${1:?Usage: run_task.sh <task_gid>}"
 REPO_PATH="${REPO_PATH:-$HOME/project}"
 REPO_PATH="${REPO_PATH/#\~/$HOME}"
 CLAUDE_CMD="${CLAUDE_CMD:-claude}"
+SHELL_CMD="${SHELL_CMD:-zsh -l}"
 LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
 TASK_LOG="${TASK_LOG:-$LOG_DIR/tasks/${GID}.log}"
+CLONE_REPOS="${CLONE_REPOS:-https://github.com/everytv/delish-server,https://github.com/everytv/delish-web2,https://github.com/everytv/delish-dashboard2}"
+NPM_INSTALL_DIRS="${NPM_INSTALL_DIRS:-delish-web2,delish-dashboard2}"
+DEBUG_ZIP_PATH="${DEBUG_ZIP_PATH:-$HOME/Downloads/debug.zip}"
+DEBUG_ZIP_DEST="${DEBUG_ZIP_DEST:-delish-server}"
 
 mkdir -p "$(dirname "$TASK_LOG")"
 
@@ -95,17 +100,18 @@ mkdir -p "$WORK_DIR"
 log "Cloning repositories..."
 (
     cd "$WORK_DIR"
-    git clone https://github.com/everytv/delish-server 2>&1 &
-    PID_SERVER=$!
-    git clone https://github.com/everytv/delish-web2 2>&1 &
-    PID_WEB=$!
-    git clone https://github.com/everytv/delish-dashboard2 2>&1 &
-    PID_DASH=$!
+    IFS=',' read -ra REPOS <<< "$CLONE_REPOS"
+    PIDS=()
+    for repo in "${REPOS[@]}"; do
+        repo=$(echo "$repo" | xargs)  # trim whitespace
+        git clone "$repo" 2>&1 &
+        PIDS+=($!)
+    done
 
     CLONE_FAILED=0
-    wait ${PID_SERVER} || { log "WARNING: delish-server clone failed"; CLONE_FAILED=1; }
-    wait ${PID_WEB}    || { log "WARNING: delish-web2 clone failed"; CLONE_FAILED=1; }
-    wait ${PID_DASH}   || { log "WARNING: delish-dashboard2 clone failed"; CLONE_FAILED=1; }
+    for i in "${!PIDS[@]}"; do
+        wait ${PIDS[$i]} || { log "WARNING: clone failed for ${REPOS[$i]}"; CLONE_FAILED=1; }
+    done
 
     if [[ "$CLONE_FAILED" -eq 1 ]]; then
         log "WARNING: One or more clone operations failed"
@@ -116,14 +122,22 @@ log "Clone complete."
 log "Installing npm dependencies..."
 (
     cd "$WORK_DIR"
-    (cd delish-web2 && npm install 2>&1) &
-    PID_NPM_WEB=$!
-    (cd delish-dashboard2 && npm install 2>&1) &
-    PID_NPM_DASH=$!
+    IFS=',' read -ra NPM_DIRS <<< "$NPM_INSTALL_DIRS"
+    PIDS=()
+    for dir in "${NPM_DIRS[@]}"; do
+        dir=$(echo "$dir" | xargs)
+        if [[ -d "$dir" ]]; then
+            (cd "$dir" && npm install 2>&1) &
+            PIDS+=($!)
+        else
+            log "WARNING: $dir not found, skipping npm install"
+        fi
+    done
 
     NPM_FAILED=0
-    wait ${PID_NPM_WEB}  || { log "WARNING: delish-web2 npm install failed"; NPM_FAILED=1; }
-    wait ${PID_NPM_DASH}  || { log "WARNING: delish-dashboard2 npm install failed"; NPM_FAILED=1; }
+    for pid in "${PIDS[@]}"; do
+        wait $pid || { NPM_FAILED=1; }
+    done
 
     if [[ "$NPM_FAILED" -eq 1 ]]; then
         log "WARNING: One or more npm install operations failed"
@@ -132,11 +146,12 @@ log "Installing npm dependencies..."
 log "npm install complete."
 
 # Extract debug.zip if present
-if [[ -f "$HOME/Downloads/debug.zip" ]]; then
-    log "Extracting debug.zip into delish-server/"
-    unzip -o "$HOME/Downloads/debug.zip" -d "$WORK_DIR/delish-server/" 2>&1 | tee -a "$TASK_LOG"
+DEBUG_ZIP_PATH="${DEBUG_ZIP_PATH/#\~/$HOME}"
+if [[ -f "$DEBUG_ZIP_PATH" ]]; then
+    log "Extracting $(basename "$DEBUG_ZIP_PATH") into $DEBUG_ZIP_DEST/"
+    unzip -o "$DEBUG_ZIP_PATH" -d "$WORK_DIR/$DEBUG_ZIP_DEST/" 2>&1 | tee -a "$TASK_LOG"
 else
-    log "WARNING: ~/Downloads/debug.zip not found – skipping extraction."
+    log "WARNING: $DEBUG_ZIP_PATH not found – skipping extraction."
 fi
 
 # ---------------------------------------------------------------------------
@@ -152,4 +167,4 @@ log "  Access session: tmux attach -t task-${GID}"
 # Replace with an interactive shell in WORK_DIR so tmux session stays alive
 # The poller will send claude + /mai commands via tmux send-keys
 cd "$WORK_DIR"
-exec zsh -l
+exec $SHELL_CMD
