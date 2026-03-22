@@ -10,7 +10,11 @@ Asanaで自分に割り当てられた新規タスクを自動検知し、リポ
 git clone https://github.com/nishimoto265/asana-auto-impl.git
 cd asana-auto-impl
 bash setup.sh        # venv作成・依存インストール・コマンド登録を自動で行う
-vim .env             # ASANA_PAT, ASANA_WORKSPACE_GID を設定
+```
+
+`.env` を編集し、必須項目を設定する（詳細は[初期設定](#初期設定)を参照）。
+
+```bash
 asana-start          # poller起動
 ```
 
