@@ -39,10 +39,10 @@ asana-start
 | `ASANA_POLL_INTERVAL_SEC` | | ポーリング間隔（秒） | `10` |
 | `REPO_PATH` | | プロジェクト作成先 | `~/project` |
 | `CLAUDE_CMD` | | Claude CLIパス | `claude` |
-| `CLONE_REPOS` | | clone対象リポジトリ（カンマ区切り） | delish 3リポ |
-| `NPM_INSTALL_DIRS` | | npm install対象（カンマ区切り） | `delish-web2,delish-dashboard2` |
-| `DEBUG_ZIP_PATH` | | 展開するzipファイルのパス | `~/Downloads/debug.zip` |
-| `DEBUG_ZIP_DEST` | | zip展開先ディレクトリ | `delish-server` |
+| `CLONE_REPOS` | | clone対象リポジトリ（カンマ区切り） | - |
+| `NPM_INSTALL_DIRS` | | npm install対象（カンマ区切り） | - |
+| `DEBUG_ZIP_PATH` | | 展開するzipファイルのパス | - |
+| `DEBUG_ZIP_DEST` | | zip展開先ディレクトリ | - |
 | `CLAUDE_STARTUP_CMD` | | Claude起動後に送るコマンド | `/mai` |
 | `CLAUDE_STARTUP_WAIT` | | Claude起動待ち秒数 | `8` |
 | `SHELL_CMD` | | tmuxセッション内のシェル | `"zsh -l"` |

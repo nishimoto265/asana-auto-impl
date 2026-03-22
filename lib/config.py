@@ -25,16 +25,16 @@ CLAUDE_CMD: str = os.environ.get("CLAUDE_CMD", "claude")
 # Clone対象リポジトリ（カンマ区切り）
 CLONE_REPOS: list[str] = [
     r.strip() for r in
-    os.environ.get("CLONE_REPOS", "https://github.com/everytv/delish-server,https://github.com/everytv/delish-web2,https://github.com/everytv/delish-dashboard2").split(",")
+    os.environ.get("CLONE_REPOS", "").split(",") if r.strip()
 ]
 # npm install対象ディレクトリ（カンマ区切り）
 NPM_INSTALL_DIRS: list[str] = [
     d.strip() for d in
-    os.environ.get("NPM_INSTALL_DIRS", "delish-web2,delish-dashboard2").split(",")
+    os.environ.get("NPM_INSTALL_DIRS", "").split(",") if d.strip()
 ]
 # debug.zip
-DEBUG_ZIP_PATH: str = os.path.expanduser(os.environ.get("DEBUG_ZIP_PATH", "~/Downloads/debug.zip"))
-DEBUG_ZIP_DEST: str = os.environ.get("DEBUG_ZIP_DEST", "delish-server")
+DEBUG_ZIP_PATH: str = os.path.expanduser(os.environ.get("DEBUG_ZIP_PATH", ""))
+DEBUG_ZIP_DEST: str = os.environ.get("DEBUG_ZIP_DEST", "")
 
 # Claude起動設定
 CLAUDE_STARTUP_CMD: str = os.environ.get("CLAUDE_STARTUP_CMD", "/mai")  # Claude起動後に送るコマンド
