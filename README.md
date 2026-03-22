@@ -7,42 +7,11 @@ Asanaで自分に割り当てられた新規タスクを自動検知し、リポ
 ## クイックスタート
 
 ```bash
-# 1. clone
 git clone https://github.com/nishimoto265/asana-auto-impl.git
 cd asana-auto-impl
-
-# 2. 依存インストール
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-
-# 3. 環境変数設定
-cp .env.example .env
-# .env を編集（ASANA_PAT, ASANA_WORKSPACE_GID は必須）
-
-# 4. コマンド登録
-mkdir -p ~/.local/bin
-ln -sf "$(pwd)/list_sessions.sh" ~/.local/bin/asana-list
-
-cat > ~/.local/bin/asana-start << EOF
-#!/bin/bash
-cd $(pwd) && source .venv/bin/activate && python3 poll_asana.py
-EOF
-
-cat > ~/.local/bin/asana-clean << 'EOF'
-#!/bin/bash
-pkill -f poll_asana 2>/dev/null
-tmux kill-server 2>/dev/null
-rm -f ~/asana-auto-impl/tmp/*
-echo "poller停止・tmux全終了・state削除 完了"
-EOF
-
-chmod +x ~/.local/bin/asana-start ~/.local/bin/asana-clean
-
-# ~/.local/bin がPATHになければ追加
-# echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
-
-# 5. 起動
-asana-start
+bash setup.sh        # venv作成・依存インストール・コマンド登録を自動で行う
+vim .env             # ASANA_PAT, ASANA_WORKSPACE_GID を設定
+asana-start          # poller起動
 ```
 
 ## 前提条件
