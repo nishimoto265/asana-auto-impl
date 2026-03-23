@@ -27,11 +27,6 @@ CLONE_REPOS: list[str] = [
     r.strip() for r in
     os.environ.get("CLONE_REPOS", "").split(",") if r.strip()
 ]
-# npm install対象ディレクトリ（カンマ区切り）
-NPM_INSTALL_DIRS: list[str] = [
-    d.strip() for d in
-    os.environ.get("NPM_INSTALL_DIRS", "").split(",") if d.strip()
-]
 # debug.zip
 DEBUG_ZIP_PATH: str = os.path.expanduser(os.environ.get("DEBUG_ZIP_PATH", ""))
 DEBUG_ZIP_DEST: str = os.environ.get("DEBUG_ZIP_DEST", "")

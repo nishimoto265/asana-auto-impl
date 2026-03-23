@@ -6,7 +6,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from lib.config import CLONE_REPOS, NPM_INSTALL_DIRS, REPO_PATH
+from lib.config import CLONE_REPOS, REPO_PATH
 
 logger = logging.getLogger("asana_poller")
 
@@ -38,17 +38,18 @@ def ensure_template() -> None:
             if result.returncode != 0:
                 logger.warning("Template: clone failed for %s: %s", repo_name, result.stderr.strip())
 
-    for dir_name in NPM_INSTALL_DIRS:
-        package_json = TEMPLATE_DIR / dir_name / "package.json"
+    for repo_url in CLONE_REPOS:
+        repo_name = os.path.basename(repo_url).removesuffix(".git")
+        package_json = TEMPLATE_DIR / repo_name / "package.json"
         if package_json.exists():
-            logger.info("Template: npm install in %s ...", dir_name)
+            logger.info("Template: npm install in %s ...", repo_name)
             result = subprocess.run(
                 ["npm", "install"],
-                cwd=str(TEMPLATE_DIR / dir_name),
+                cwd=str(TEMPLATE_DIR / repo_name),
                 capture_output=True,
                 text=True,
             )
             if result.returncode != 0:
-                logger.warning("Template: npm install failed for %s: %s", dir_name, result.stderr.strip())
+                logger.warning("Template: npm install failed for %s: %s", repo_name, result.stderr.strip())
 
     logger.info("Template setup complete: %s", TEMPLATE_DIR)

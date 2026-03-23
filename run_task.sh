@@ -34,7 +34,6 @@ SHELL_CMD="${SHELL_CMD:-zsh -l}"
 LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
 TASK_LOG="${TASK_LOG:-$LOG_DIR/tasks/${GID}.log}"
 CLONE_REPOS="${CLONE_REPOS:-}"
-NPM_INSTALL_DIRS="${NPM_INSTALL_DIRS:-}"
 DEBUG_ZIP_PATH="${DEBUG_ZIP_PATH:-}"
 DEBUG_ZIP_DEST="${DEBUG_ZIP_DEST:-}"
 
@@ -131,17 +130,13 @@ elif [[ -d "$TEMPLATE_DIR" ]]; then
     done
     log "Template update complete."
 
-    # NPM_INSTALL_DIRSに該当するものだけnpm install
-    if [[ -n "$NPM_INSTALL_DIRS" ]]; then
-        IFS=',' read -ra NPM_DIRS <<< "$NPM_INSTALL_DIRS"
-        for dir in "${NPM_DIRS[@]}"; do
-            dir=$(echo "$dir" | xargs)
-            if [[ -f "$TEMPLATE_DIR/$dir/package.json" ]]; then
-                log "npm install in template/$dir..."
-                (cd "$TEMPLATE_DIR/$dir" && npm install 2>&1) || log "WARNING: npm install failed for $dir"
-            fi
-        done
-    fi
+    # package.jsonがあるリポジトリだけnpm install
+    for repo_name in "${REPO_NAMES[@]}"; do
+        if [[ -f "$TEMPLATE_DIR/$repo_name/package.json" ]]; then
+            log "npm install in template/$repo_name..."
+            (cd "$TEMPLATE_DIR/$repo_name" && npm install 2>&1) || log "WARNING: npm install failed for $repo_name"
+        fi
+    done
 
     # CLONE_REPOSに該当するものだけコピー
     log "Copying from template: $TEMPLATE_DIR"
@@ -179,33 +174,30 @@ else
     ) || true
     log "Clone complete."
 
-    if [[ -n "$NPM_INSTALL_DIRS" ]]; then
-        log "Installing npm dependencies..."
-        (
-            cd "$WORK_DIR"
-            IFS=',' read -ra NPM_DIRS <<< "$NPM_INSTALL_DIRS"
-            PIDS=()
-            for dir in "${NPM_DIRS[@]}"; do
-                dir=$(echo "$dir" | xargs)
-                if [[ -f "$dir/package.json" ]]; then
-                    (cd "$dir" && npm install 2>&1) &
-                    PIDS+=($!)
-                else
-                    log "WARNING: $dir not found, skipping npm install"
-                fi
-            done
-
-            NPM_FAILED=0
-            for pid in "${PIDS[@]}"; do
-                wait $pid || { NPM_FAILED=1; }
-            done
-
-            if [[ "$NPM_FAILED" -eq 1 ]]; then
-                log "WARNING: One or more npm install operations failed"
+    log "Installing npm dependencies..."
+    (
+        cd "$WORK_DIR"
+        IFS=',' read -ra REPOS2 <<< "$CLONE_REPOS"
+        PIDS=()
+        for repo in "${REPOS2[@]}"; do
+            repo=$(echo "$repo" | xargs)
+            dir=$(basename "$repo" .git)
+            if [[ -f "$dir/package.json" ]]; then
+                (cd "$dir" && npm install 2>&1) &
+                PIDS+=($!)
             fi
-        ) || true
-        log "npm install complete."
-    fi
+        done
+
+        NPM_FAILED=0
+        for pid in "${PIDS[@]}"; do
+            wait $pid || { NPM_FAILED=1; }
+        done
+
+        if [[ "$NPM_FAILED" -eq 1 ]]; then
+            log "WARNING: One or more npm install operations failed"
+        fi
+    ) || true
+    log "npm install complete."
 fi
 
 # Extract debug.zip if present

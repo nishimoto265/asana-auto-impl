@@ -38,8 +38,7 @@ asana-start          # poller起動
 | `ASANA_POLL_INTERVAL_SEC` | | ポーリング間隔（秒） | `10` |
 | `REPO_PATH` | | プロジェクト作成先 | `~/project` |
 | `CLAUDE_CMD` | | Claude CLIパス | `claude` |
-| `CLONE_REPOS` | | clone対象リポジトリ（カンマ区切り） | - |
-| `NPM_INSTALL_DIRS` | | npm install対象（カンマ区切り） | - |
+| `CLONE_REPOS` | | clone対象リポジトリ（カンマ区切り、package.jsonがあれば自動でnpm install） | - |
 | `DEBUG_ZIP_PATH` | | 展開するzipファイルのパス | - |
 | `DEBUG_ZIP_DEST` | | zip展開先ディレクトリ | - |
 | `CLAUDE_STARTUP_CMD` | | Claude起動後に送るコマンド | `/mai` |
