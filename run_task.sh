@@ -136,7 +136,7 @@ elif [[ -d "$TEMPLATE_DIR" ]]; then
         IFS=',' read -ra NPM_DIRS <<< "$NPM_INSTALL_DIRS"
         for dir in "${NPM_DIRS[@]}"; do
             dir=$(echo "$dir" | xargs)
-            if [[ -d "$TEMPLATE_DIR/$dir" ]]; then
+            if [[ -f "$TEMPLATE_DIR/$dir/package.json" ]]; then
                 log "npm install in template/$dir..."
                 (cd "$TEMPLATE_DIR/$dir" && npm install 2>&1) || log "WARNING: npm install failed for $dir"
             fi
@@ -187,7 +187,7 @@ else
             PIDS=()
             for dir in "${NPM_DIRS[@]}"; do
                 dir=$(echo "$dir" | xargs)
-                if [[ -d "$dir" ]]; then
+                if [[ -f "$dir/package.json" ]]; then
                     (cd "$dir" && npm install 2>&1) &
                     PIDS+=($!)
                 else

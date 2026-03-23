@@ -81,7 +81,7 @@ if [[ -f "$SCRIPT_DIR/.env" ]]; then
         IFS=',' read -ra NPM_DIRS <<< "$NPM_INSTALL_DIRS"
         for dir in "${NPM_DIRS[@]}"; do
             dir=$(echo "$dir" | xargs)
-            if [[ -d "$TEMPLATE_DIR/$dir" ]]; then
+            if [[ -f "$TEMPLATE_DIR/$dir/package.json" ]]; then
                 echo "  npm install in $dir ..."
                 (cd "$TEMPLATE_DIR/$dir" && npm install 2>&1)
             fi
