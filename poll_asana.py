@@ -85,7 +85,10 @@ def main() -> None:
 
     logger.info("Starting Asana poller (interval=%ds)", POLL_INTERVAL)
 
-    ensure_template()
+    try:
+        ensure_template()
+    except Exception as exc:
+        logger.warning("Template setup failed (will retry per-task): %s", exc)
 
     try:
         assignee_gid = get_my_user_gid()

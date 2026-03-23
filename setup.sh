@@ -32,13 +32,21 @@ cat > "$BIN_DIR/asana-start" << EOF
 cd "$SCRIPT_DIR" && source .venv/bin/activate && python3 poll_asana.py
 EOF
 
-cat > "$BIN_DIR/asana-clean" << EOF
+cat > "$BIN_DIR/asana-clean" << 'CLEANEOF'
 #!/bin/bash
-pkill -f poll_asana 2>/dev/null
-tmux kill-server 2>/dev/null
-rm -f "$SCRIPT_DIR/tmp/"*
-echo "poller停止・tmux全終了・state削除 完了"
-EOF
+# pollerプロセスを停止（完全一致で誤killを防止）
+pkill -xf 'python3 poll_asana.py' 2>/dev/null
+
+# task-* セッションのみ終了（ユーザーの他のtmuxセッションは残す）
+for s in $(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep '^task-'); do
+    tmux kill-session -t "$s" 2>/dev/null
+done
+
+# state・マーカーファイルを削除
+rm -f "SCRIPT_DIR_PLACEHOLDER/tmp/"*
+echo "poller停止・タスクセッション終了・state削除 完了"
+CLEANEOF
+sed -i '' "s|SCRIPT_DIR_PLACEHOLDER|$SCRIPT_DIR|g" "$BIN_DIR/asana-clean"
 
 ln -sf "$SCRIPT_DIR/list_sessions.sh" "$BIN_DIR/asana-list"
 chmod +x "$BIN_DIR/asana-start" "$BIN_DIR/asana-clean"

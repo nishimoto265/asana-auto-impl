@@ -2,6 +2,7 @@
 
 import logging
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -23,7 +24,10 @@ def ensure_template() -> None:
     for repo_url in CLONE_REPOS:
         repo_name = os.path.basename(repo_url).removesuffix(".git")
         repo_dir = TEMPLATE_DIR / repo_name
-        if not repo_dir.exists():
+        if not (repo_dir / ".git").is_dir():
+            if repo_dir.exists():
+                logger.warning("Template: removing incomplete %s", repo_name)
+                shutil.rmtree(repo_dir)
             logger.info("Template: cloning %s ...", repo_name)
             result = subprocess.run(
                 ["git", "clone", repo_url],
