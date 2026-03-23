@@ -59,45 +59,7 @@ else
     echo "[4/4] PATH設定済み"
 fi
 
-# 5. テンプレートディレクトリ準備 (clone + npm install)
-if [[ -f "$SCRIPT_DIR/.env" ]]; then
-    set -a; source "$SCRIPT_DIR/.env"; set +a
-    REPO_PATH="${REPO_PATH/#\~/$HOME}"
-    TEMPLATE_DIR="${REPO_PATH}/_template"
-
-    # ディレクトリが存在しない、または空（リポジトリ未clone）の場合に準備処理を実行
-    if [[ -n "$CLONE_REPOS" && ( ! -d "$TEMPLATE_DIR" || -z "$(ls -A "$TEMPLATE_DIR" 2>/dev/null)" ) ]]; then
-        echo "[5/5] テンプレートディレクトリ作成: $TEMPLATE_DIR"
-        mkdir -p "$TEMPLATE_DIR"
-        cd "$TEMPLATE_DIR"
-
-        IFS=',' read -ra REPOS <<< "$CLONE_REPOS"
-        for repo in "${REPOS[@]}"; do
-            repo=$(echo "$repo" | xargs)
-            echo "  cloning $repo ..."
-            git clone "$repo" 2>&1
-        done
-
-        IFS=',' read -ra NPM_DIRS <<< "$NPM_INSTALL_DIRS"
-        for dir in "${NPM_DIRS[@]}"; do
-            dir=$(echo "$dir" | xargs)
-            if [[ -f "$TEMPLATE_DIR/$dir/package.json" ]]; then
-                echo "  npm install in $dir ..."
-                (cd "$TEMPLATE_DIR/$dir" && npm install 2>&1)
-            fi
-        done
-
-        cd "$SCRIPT_DIR"
-        echo "[5/5] テンプレート準備完了"
-    else
-        echo "[5/5] テンプレート既存またはCLONE_REPOS未設定、スキップ"
-    fi
-else
-    echo "[5/5] .env未作成のためテンプレートスキップ"
-fi
-
 echo ""
 echo "=== セットアップ完了 ==="
 echo "1. .env を編集: $SCRIPT_DIR/.env"
-echo "2. テンプレート作成: bash setup.sh (再実行)"
-echo "3. 起動: asana-start"
+echo "2. 起動: asana-start（初回起動時にテンプレートが自動作成されます）"

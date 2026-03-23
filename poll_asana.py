@@ -18,6 +18,7 @@ from lib.config import ASANA_PAT, ASANA_PROJECT_GID, ASANA_WORKSPACE_GID, POLL_I
 from lib.launcher import launch_task
 from lib.logging_setup import setup_logging
 from lib.state import load_state, save_state
+from lib.template import ensure_template
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PID_FILE = SCRIPT_DIR / "tmp" / "poller.pid"
@@ -83,6 +84,8 @@ def main() -> None:
         logger.info("Watching all tasks in workspace (no project filter)")
 
     logger.info("Starting Asana poller (interval=%ds)", POLL_INTERVAL)
+
+    ensure_template()
 
     try:
         assignee_gid = get_my_user_gid()
