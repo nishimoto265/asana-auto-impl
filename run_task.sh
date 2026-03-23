@@ -142,7 +142,7 @@ elif [[ -d "$TEMPLATE_DIR" ]]; then
     log "Copying from template: $TEMPLATE_DIR"
     for repo_name in "${REPO_NAMES[@]}"; do
         if [[ -d "$TEMPLATE_DIR/$repo_name" && ! -d "$WORK_DIR/$repo_name" ]]; then
-            cp -r "$TEMPLATE_DIR/$repo_name" "$WORK_DIR/$repo_name"
+            cp -cR "$TEMPLATE_DIR/$repo_name" "$WORK_DIR/$repo_name"
             log "Copied $repo_name"
         elif [[ -d "$WORK_DIR/$repo_name" ]]; then
             log "Already exists: $repo_name, skipping"
