@@ -81,7 +81,7 @@ log "Task URL:  $TASK_URL"
 # ---------------------------------------------------------------------------
 
 if [[ -n "$TASK_NAME" ]]; then
-    DIR_NAME=$(PYTHONPATH="$SCRIPT_DIR" python3 -c "from lib.dirnames import to_safe_dirname; print(to_safe_dirname('''$TASK_NAME'''))" 2>/dev/null || echo "$GID")
+    DIR_NAME=$(echo "$TASK_NAME" | PYTHONPATH="$SCRIPT_DIR" python3 -c "import sys; from lib.dirnames import to_safe_dirname; print(to_safe_dirname(sys.stdin.read().strip()))" 2>/dev/null || echo "$GID")
 else
     DIR_NAME="$GID"
 fi
@@ -97,61 +97,126 @@ mkdir -p "$WORK_DIR"
 # 3. Clone repos & install dependencies
 # ---------------------------------------------------------------------------
 
-log "Cloning repositories..."
-(
-    cd "$WORK_DIR"
+TEMPLATE_DIR="${REPO_PATH}/_template"
+
+if [[ -z "$CLONE_REPOS" ]]; then
+    log "CLONE_REPOS is empty, skipping clone/template processing."
+elif [[ -d "$TEMPLATE_DIR" ]]; then
+    # CLONE_REPOSからリポジトリ名を抽出
     IFS=',' read -ra REPOS <<< "$CLONE_REPOS"
-    PIDS=()
+    REPO_NAMES=()
     for repo in "${REPOS[@]}"; do
-        repo=$(echo "$repo" | xargs)  # trim whitespace
-        git clone "$repo" 2>&1 &
-        PIDS+=($!)
+        repo=$(echo "$repo" | xargs)
+        repo_name=$(basename "$repo" .git)
+        REPO_NAMES+=("$repo_name")
     done
 
-    CLONE_FAILED=0
-    for i in "${!PIDS[@]}"; do
-        wait ${PIDS[$i]} || { log "WARNING: clone failed for ${REPOS[$i]}"; CLONE_FAILED=1; }
-    done
-
-    if [[ "$CLONE_FAILED" -eq 1 ]]; then
-        log "WARNING: One or more clone operations failed"
-    fi
-) || true
-log "Clone complete."
-
-log "Installing npm dependencies..."
-(
-    cd "$WORK_DIR"
-    IFS=',' read -ra NPM_DIRS <<< "$NPM_INSTALL_DIRS"
-    PIDS=()
-    for dir in "${NPM_DIRS[@]}"; do
-        dir=$(echo "$dir" | xargs)
-        if [[ -d "$dir" ]]; then
-            (cd "$dir" && npm install 2>&1) &
-            PIDS+=($!)
-        else
-            log "WARNING: $dir not found, skipping npm install"
+    # テンプレートにないリポジトリはcloneしておく
+    for i in "${!REPOS[@]}"; do
+        repo=$(echo "${REPOS[$i]}" | xargs)
+        repo_name="${REPO_NAMES[$i]}"
+        if [[ ! -d "$TEMPLATE_DIR/$repo_name" ]]; then
+            log "Template missing $repo_name, cloning..."
+            (cd "$TEMPLATE_DIR" && git clone "$repo" 2>&1) || log "WARNING: clone failed for $repo"
         fi
     done
 
-    NPM_FAILED=0
-    for pid in "${PIDS[@]}"; do
-        wait $pid || { NPM_FAILED=1; }
+    # テンプレートを git pull + npm install で最新化
+    log "Updating template repositories..."
+    for repo_name in "${REPO_NAMES[@]}"; do
+        if [[ -d "$TEMPLATE_DIR/$repo_name/.git" ]]; then
+            (cd "$TEMPLATE_DIR/$repo_name" && git pull 2>&1) || log "WARNING: git pull failed for $repo_name"
+            log "Updated $repo_name"
+        fi
     done
+    log "Template update complete."
 
-    if [[ "$NPM_FAILED" -eq 1 ]]; then
-        log "WARNING: One or more npm install operations failed"
+    # NPM_INSTALL_DIRSに該当するものだけnpm install
+    if [[ -n "$NPM_INSTALL_DIRS" ]]; then
+        IFS=',' read -ra NPM_DIRS <<< "$NPM_INSTALL_DIRS"
+        for dir in "${NPM_DIRS[@]}"; do
+            dir=$(echo "$dir" | xargs)
+            if [[ -d "$TEMPLATE_DIR/$dir" ]]; then
+                log "npm install in template/$dir..."
+                (cd "$TEMPLATE_DIR/$dir" && npm install 2>&1) || log "WARNING: npm install failed for $dir"
+            fi
+        done
     fi
-) || true
-log "npm install complete."
+
+    # CLONE_REPOSに該当するものだけコピー
+    log "Copying from template: $TEMPLATE_DIR"
+    for repo_name in "${REPO_NAMES[@]}"; do
+        if [[ -d "$TEMPLATE_DIR/$repo_name" && ! -d "$WORK_DIR/$repo_name" ]]; then
+            cp -r "$TEMPLATE_DIR/$repo_name" "$WORK_DIR/$repo_name"
+            log "Copied $repo_name"
+        elif [[ -d "$WORK_DIR/$repo_name" ]]; then
+            log "Already exists: $repo_name, skipping"
+        else
+            log "WARNING: $repo_name not found in template"
+        fi
+    done
+    log "Template copy complete."
+else
+    log "No template dir found, falling back to git clone..."
+    (
+        cd "$WORK_DIR"
+        IFS=',' read -ra REPOS <<< "$CLONE_REPOS"
+        PIDS=()
+        for repo in "${REPOS[@]}"; do
+            repo=$(echo "$repo" | xargs)
+            git clone "$repo" 2>&1 &
+            PIDS+=($!)
+        done
+
+        CLONE_FAILED=0
+        for i in "${!PIDS[@]}"; do
+            wait ${PIDS[$i]} || { log "WARNING: clone failed for ${REPOS[$i]}"; CLONE_FAILED=1; }
+        done
+
+        if [[ "$CLONE_FAILED" -eq 1 ]]; then
+            log "WARNING: One or more clone operations failed"
+        fi
+    ) || true
+    log "Clone complete."
+
+    if [[ -n "$NPM_INSTALL_DIRS" ]]; then
+        log "Installing npm dependencies..."
+        (
+            cd "$WORK_DIR"
+            IFS=',' read -ra NPM_DIRS <<< "$NPM_INSTALL_DIRS"
+            PIDS=()
+            for dir in "${NPM_DIRS[@]}"; do
+                dir=$(echo "$dir" | xargs)
+                if [[ -d "$dir" ]]; then
+                    (cd "$dir" && npm install 2>&1) &
+                    PIDS+=($!)
+                else
+                    log "WARNING: $dir not found, skipping npm install"
+                fi
+            done
+
+            NPM_FAILED=0
+            for pid in "${PIDS[@]}"; do
+                wait $pid || { NPM_FAILED=1; }
+            done
+
+            if [[ "$NPM_FAILED" -eq 1 ]]; then
+                log "WARNING: One or more npm install operations failed"
+            fi
+        ) || true
+        log "npm install complete."
+    fi
+fi
 
 # Extract debug.zip if present
-DEBUG_ZIP_PATH="${DEBUG_ZIP_PATH/#\~/$HOME}"
-if [[ -f "$DEBUG_ZIP_PATH" ]]; then
-    log "Extracting $(basename "$DEBUG_ZIP_PATH") into $DEBUG_ZIP_DEST/"
-    unzip -o "$DEBUG_ZIP_PATH" -d "$WORK_DIR/$DEBUG_ZIP_DEST/" 2>&1 | tee -a "$TASK_LOG"
-else
-    log "WARNING: $DEBUG_ZIP_PATH not found – skipping extraction."
+if [[ -n "$DEBUG_ZIP_PATH" ]]; then
+    DEBUG_ZIP_PATH="${DEBUG_ZIP_PATH/#\~/$HOME}"
+    if [[ -f "$DEBUG_ZIP_PATH" ]]; then
+        log "Extracting $(basename "$DEBUG_ZIP_PATH") into $DEBUG_ZIP_DEST/"
+        unzip -o "$DEBUG_ZIP_PATH" -d "$WORK_DIR/$DEBUG_ZIP_DEST/" 2>&1 | tee -a "$TASK_LOG"
+    else
+        log "WARNING: $DEBUG_ZIP_PATH not found – skipping extraction."
+    fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -159,6 +224,7 @@ fi
 # ---------------------------------------------------------------------------
 
 # Write marker file so poller knows setup is done
+mkdir -p "${SCRIPT_DIR}/tmp"
 touch "${SCRIPT_DIR}/tmp/setup_done_${GID}"
 
 log "Setup complete. Handing over to interactive shell."

@@ -3,6 +3,7 @@
 import logging
 import os
 import re
+import shlex
 import subprocess
 import threading
 import time
@@ -53,7 +54,7 @@ def _send_claude_commands(
     """Wait for run_task.sh setup to finish, then send claude + /mai via tmux send-keys."""
     marker = SCRIPT_DIR / "tmp" / f"setup_done_{gid}"
 
-    for _ in range(360):  # max 6 min wait
+    for _ in range(900):  # max 15 min wait
         if marker.exists():
             break
         time.sleep(1)
@@ -64,7 +65,7 @@ def _send_claude_commands(
     time.sleep(2)
 
     try:
-        claude_launch = f"{CLAUDE_CMD} -n '{task_name}'"
+        claude_launch = f"{CLAUDE_CMD} -n {shlex.quote(task_name)}"
         subprocess.run(
             ["tmux", "send-keys", "-t", session_name, "-l", claude_launch], check=True
         )
@@ -113,6 +114,12 @@ def _send_claude_commands(
 
 def launch_task(gid: str, task_name: str, state: dict) -> None:
     """Spawn run_task.sh in a new tmux session for the given task GID."""
+    # 前回のマーカーファイルが残っていたら削除（誤検知防止）
+    marker = SCRIPT_DIR / "tmp" / f"setup_done_{gid}"
+    if marker.exists():
+        marker.unlink()
+        logger.debug("Removed stale setup marker: %s", marker)
+
     session_name = f"task-{gid}"
     task_log = LOG_DIR / "tasks" / f"{gid}.log"
 
