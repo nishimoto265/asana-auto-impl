@@ -14,7 +14,7 @@ def to_safe_dirname(name: str) -> str:
     collapses whitespace and repeated hyphens, and strips leading/trailing hyphens.
     Japanese and other Unicode characters are preserved.
     """
-    s = re.sub(r'[/:*?"<>|\\]', "-", name)
+    s = re.sub(r'[/:*?"<>|\\{}\[\]()!#~?]', "-", name)
     s = re.sub(r"\s+", "-", s)
     s = re.sub(r"-+", "-", s)
     return s.strip("-")
