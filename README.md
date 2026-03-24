@@ -34,7 +34,7 @@ asana-start          # poller起動
 |------|------|------|-----------|
 | `ASANA_PAT` | ○ | Personal Access Token | - |
 | `ASANA_WORKSPACE_GID` | ○ | ワークスペースGID | - |
-| `ASANA_PROJECT_GID` | | 監視対象プロジェクト（未設定でワークスペース全体） | - |
+| `ASANA_PROJECT_GIDS` | | 監視対象プロジェクト（カンマ区切りで複数指定可、未設定でワークスペース全体） | - |
 | `ASANA_POLL_INTERVAL_SEC` | | ポーリング間隔（秒） | `10` |
 | `REPO_PATH` | | プロジェクト作成先 | `~/project` |
 | `CLAUDE_CMD` | | Claude CLIパス | `claude` |
@@ -113,7 +113,7 @@ lib/
 | 症状 | 対処 |
 |------|------|
 | poller起動しない | `.env` の `ASANA_PAT` と `ASANA_WORKSPACE_GID` を確認 |
-| タスクが検知されない | `logs/poller.log` を確認。`ASANA_PROJECT_GID` の設定を確認 |
+| タスクが検知されない | `logs/poller.log` を確認。`ASANA_PROJECT_GIDS` の設定を確認 |
 | tmuxセッションがすぐ終了する | `logs/tasks/{gid}.log` を確認。`.env` のクオート（`SHELL_CMD="zsh -l"`）を確認 |
 | Claude起動が `--print` モードエラー | パイプ経由でstdinが奪われていないか確認 |
 | 二重起動エラー | `asana-clean` で全停止してから再起動 |

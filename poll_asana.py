@@ -14,7 +14,7 @@ from pathlib import Path
 import requests
 
 from lib.asana_api import get_my_incomplete_tasks, get_my_user_gid
-from lib.config import ASANA_PAT, ASANA_PROJECT_GID, ASANA_WORKSPACE_GID, POLL_INTERVAL
+from lib.config import ASANA_PAT, ASANA_PROJECT_GIDS, ASANA_WORKSPACE_GID, POLL_INTERVAL
 from lib.launcher import launch_task
 from lib.logging_setup import setup_logging
 from lib.state import load_state, save_state
@@ -78,8 +78,8 @@ def main() -> None:
         logger.error("ASANA_WORKSPACE_GID is not set. Exiting.")
         sys.exit(1)
 
-    if ASANA_PROJECT_GID:
-        logger.info("Filtering by project GID: %s", ASANA_PROJECT_GID)
+    if ASANA_PROJECT_GIDS:
+        logger.info("Filtering by project GIDs: %s", ASANA_PROJECT_GIDS)
     else:
         logger.info("Watching all tasks in workspace (no project filter)")
 

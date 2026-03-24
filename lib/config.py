@@ -9,7 +9,10 @@ load_dotenv()
 
 ASANA_PAT: str = os.environ.get("ASANA_PAT", "")
 ASANA_WORKSPACE_GID: str = os.environ.get("ASANA_WORKSPACE_GID", "")
-ASANA_PROJECT_GID: str = os.environ.get("ASANA_PROJECT_GID", "")
+ASANA_PROJECT_GIDS: list[str] = [
+    g.strip() for g in
+    os.environ.get("ASANA_PROJECT_GIDS", os.environ.get("ASANA_PROJECT_GID", "")).split(",") if g.strip()
+]
 POLL_INTERVAL: int = int(os.environ.get("ASANA_POLL_INTERVAL_SEC", "10"))
 LOG_DIR: Path = Path(os.environ.get("LOG_DIR", "./logs")).resolve()
 STATE_FILE: Path = Path(os.environ.get("TMP_DIR", "./tmp")).resolve() / "state.json"

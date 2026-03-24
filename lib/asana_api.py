@@ -8,7 +8,7 @@ import requests
 from lib.config import (
     ASANA_BASE_URL,
     ASANA_PAT,
-    ASANA_PROJECT_GID,
+    ASANA_PROJECT_GIDS,
     ASANA_WORKSPACE_GID,
 )
 
@@ -71,23 +71,31 @@ def get_my_user_gid() -> str:
 def get_my_incomplete_tasks(assignee_gid: str) -> list[dict]:
     """Return list of incomplete task dicts assigned to the user.
 
-    If ASANA_PROJECT_GID is set, only returns tasks from that project.
+    If ASANA_PROJECT_GIDS is set, returns tasks from those projects.
     Otherwise uses the user_task_list endpoint (workspace-wide).
     """
-    if ASANA_PROJECT_GID:
-        params = {
-            "project": ASANA_PROJECT_GID,
-            "completed_since": "now",
-            "opt_fields": "gid,name,assignee",
-            "limit": 100,
-        }
-        data = _asana_get("/tasks", params=params)
-        return _paginate(
-            data,
-            filter_fn=lambda t: (
-                t.get("assignee") and t["assignee"].get("gid") == assignee_gid
-            ),
-        )
+    if ASANA_PROJECT_GIDS:
+        all_tasks: list[dict] = []
+        seen_gids: set[str] = set()
+        for project_gid in ASANA_PROJECT_GIDS:
+            params = {
+                "project": project_gid,
+                "completed_since": "now",
+                "opt_fields": "gid,name,assignee",
+                "limit": 100,
+            }
+            data = _asana_get("/tasks", params=params)
+            tasks = _paginate(
+                data,
+                filter_fn=lambda t: (
+                    t.get("assignee") and t["assignee"].get("gid") == assignee_gid
+                ),
+            )
+            for t in tasks:
+                if t["gid"] not in seen_gids:
+                    seen_gids.add(t["gid"])
+                    all_tasks.append(t)
+        return all_tasks
     else:
         utl_data = _asana_get(
             f"/users/{assignee_gid}/user_task_list",
