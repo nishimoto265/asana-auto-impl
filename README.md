@@ -35,6 +35,7 @@ asana-start          # poller起動
 | `ASANA_PAT` | ○ | Personal Access Token | - |
 | `ASANA_WORKSPACE_GID` | ○ | ワークスペースGID | - |
 | `ASANA_PROJECT_GIDS` | | 監視対象プロジェクト（カンマ区切りで複数指定可、未設定でワークスペース全体） | - |
+| `ASANA_WATCH_PARENT_TASKS` | | サブタスクを監視する親タスクGID（カンマ区切り） | - |
 | `ASANA_POLL_INTERVAL_SEC` | | ポーリング間隔（秒） | `10` |
 | `REPO_PATH` | | プロジェクト作成先 | `~/project` |
 | `CLAUDE_CMD` | | Claude CLIパス | `claude` |

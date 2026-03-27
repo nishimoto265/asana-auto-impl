@@ -30,6 +30,11 @@ CLONE_REPOS: list[str] = [
     r.strip() for r in
     os.environ.get("CLONE_REPOS", "").split(",") if r.strip()
 ]
+# サブタスク監視対象の親タスクGID（カンマ区切り）
+WATCH_PARENT_TASKS: list[str] = [
+    g.strip() for g in
+    os.environ.get("ASANA_WATCH_PARENT_TASKS", "").split(",") if g.strip()
+]
 # debug.zip
 DEBUG_ZIP_PATH: str = os.path.expanduser(os.environ.get("DEBUG_ZIP_PATH", ""))
 DEBUG_ZIP_DEST: str = os.environ.get("DEBUG_ZIP_DEST", "")

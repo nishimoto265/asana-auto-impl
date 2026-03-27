@@ -10,6 +10,7 @@ from lib.config import (
     ASANA_PAT,
     ASANA_PROJECT_GIDS,
     ASANA_WORKSPACE_GID,
+    WATCH_PARENT_TASKS,
 )
 
 logger = logging.getLogger("asana_poller")
@@ -68,15 +69,26 @@ def get_my_user_gid() -> str:
     return data["data"]["gid"]
 
 
+def _is_mine(task: dict, assignee_gid: str) -> bool:
+    return bool(task.get("assignee") and task["assignee"].get("gid") == assignee_gid)
+
+
 def get_my_incomplete_tasks(assignee_gid: str) -> list[dict]:
     """Return list of incomplete task dicts assigned to the user.
 
-    If ASANA_PROJECT_GIDS is set, returns tasks from those projects.
-    Otherwise uses the user_task_list endpoint (workspace-wide).
+    Fetches from ASANA_PROJECT_GIDS (top-level tasks) and
+    WATCH_PARENT_TASKS (subtasks of specified parents).
     """
+    all_tasks: list[dict] = []
+    seen_gids: set[str] = set()
+
+    def _add(task: dict) -> None:
+        if task["gid"] not in seen_gids:
+            seen_gids.add(task["gid"])
+            all_tasks.append(task)
+
+    # 1. プロジェクトのトップレベルタスク
     if ASANA_PROJECT_GIDS:
-        all_tasks: list[dict] = []
-        seen_gids: set[str] = set()
         for project_gid in ASANA_PROJECT_GIDS:
             params = {
                 "project": project_gid,
@@ -85,30 +97,39 @@ def get_my_incomplete_tasks(assignee_gid: str) -> list[dict]:
                 "limit": 100,
             }
             data = _asana_get("/tasks", params=params)
-            tasks = _paginate(
-                data,
-                filter_fn=lambda t: (
-                    t.get("assignee") and t["assignee"].get("gid") == assignee_gid
-                ),
+            for t in _paginate(data):
+                if _is_mine(t, assignee_gid):
+                    _add(t)
+
+    # 2. 指定親タスクのサブタスク（1階層のみ）
+    for parent_gid in WATCH_PARENT_TASKS:
+        try:
+            sub_data = _asana_get(
+                f"/tasks/{parent_gid}/subtasks",
+                params={"opt_fields": "gid,name,assignee,completed", "limit": 100},
             )
-            for t in tasks:
-                if t["gid"] not in seen_gids:
-                    seen_gids.add(t["gid"])
-                    all_tasks.append(t)
+            for st in _paginate(sub_data):
+                if not st.get("completed") and _is_mine(st, assignee_gid):
+                    _add(st)
+        except Exception as exc:
+            logger.warning("Failed to fetch subtasks for parent %s: %s", parent_gid, exc)
+
+    if ASANA_PROJECT_GIDS or WATCH_PARENT_TASKS:
         return all_tasks
-    else:
-        utl_data = _asana_get(
-            f"/users/{assignee_gid}/user_task_list",
-            params={"workspace": ASANA_WORKSPACE_GID},
-        )
-        utl_gid = utl_data["data"]["gid"]
-        params = {
-            "completed_since": "now",
-            "opt_fields": "gid,name",
-            "limit": 100,
-        }
-        data = _asana_get(f"/user_task_lists/{utl_gid}/tasks", params=params)
-        return _paginate(data)
+
+    # フォールバック: ワークスペース全体
+    utl_data = _asana_get(
+        f"/users/{assignee_gid}/user_task_list",
+        params={"workspace": ASANA_WORKSPACE_GID},
+    )
+    utl_gid = utl_data["data"]["gid"]
+    params = {
+        "completed_since": "now",
+        "opt_fields": "gid,name",
+        "limit": 100,
+    }
+    data = _asana_get(f"/user_task_lists/{utl_gid}/tasks", params=params)
+    return _paginate(data)
 
 
 def get_task_detail(gid: str) -> dict:
