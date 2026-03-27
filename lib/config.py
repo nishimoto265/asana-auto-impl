@@ -41,5 +41,6 @@ DEBUG_ZIP_DEST: str = os.environ.get("DEBUG_ZIP_DEST", "")
 
 # Claude起動設定
 CLAUDE_STARTUP_CMD: str = os.environ.get("CLAUDE_STARTUP_CMD", "/mai")  # Claude起動後に送るコマンド
+CLAUDE_EXTRA_MSG: str = os.environ.get("CLAUDE_EXTRA_MSG", "")  # タスクURL後に追加するメッセージ
 CLAUDE_STARTUP_WAIT: int = int(os.environ.get("CLAUDE_STARTUP_WAIT", "8"))  # Claude起動待ち秒数
 SHELL_CMD: str = os.environ.get("SHELL_CMD", "zsh -l")  # tmuxセッション内のシェル

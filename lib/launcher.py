@@ -11,6 +11,7 @@ from pathlib import Path
 
 from lib.config import (
     CLAUDE_CMD,
+    CLAUDE_EXTRA_MSG,
     CLAUDE_STARTUP_CMD,
     CLAUDE_STARTUP_WAIT,
     LOG_DIR,
@@ -89,6 +90,8 @@ def _send_claude_commands(
         time.sleep(1)
 
         mai_cmd = f"{CLAUDE_STARTUP_CMD} {task_url}"
+        if CLAUDE_EXTRA_MSG:
+            mai_cmd = f"{mai_cmd} {CLAUDE_EXTRA_MSG}"
         subprocess.run(
             ["tmux", "send-keys", "-t", session_name, "-l", mai_cmd], check=True
         )
