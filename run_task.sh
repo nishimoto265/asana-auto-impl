@@ -201,7 +201,7 @@ else
 fi
 
 # Extract debug.zip if present
-if [[ -n "$DEBUG_ZIP_PATH" ]]; then
+if [[ -n "$DEBUG_ZIP_PATH" && -n "$DEBUG_ZIP_DEST" && -d "$WORK_DIR/$DEBUG_ZIP_DEST" ]]; then
     DEBUG_ZIP_PATH="${DEBUG_ZIP_PATH/#\~/$HOME}"
     if [[ -f "$DEBUG_ZIP_PATH" ]]; then
         log "Extracting $(basename "$DEBUG_ZIP_PATH") into $DEBUG_ZIP_DEST/"
